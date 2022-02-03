@@ -7,7 +7,7 @@ namespace py = pybind11;
 
 // Фун-кия буффера и сохранения данных
 
-py::array_t<double> array_buffer(py::array_t<double> seismogram, py::array_t<double> timeneiron, int dt) {
+py::array_t<double> array_buffer(py::array_t<double> seismogram, py::array_t<double> timeneiron, float dt) {
     py::buffer_info seismogram_info = seismogram.request();
     py::buffer_info timeneiron_info = timeneiron.request();
 
@@ -15,7 +15,6 @@ py::array_t<double> array_buffer(py::array_t<double> seismogram, py::array_t<dou
     int n_traces = seismogram_info.shape[0];
     int n_samples = seismogram_info.shape[1];
     int n_node = timeneiron_info.shape[0];
-    int n_points=timeneiron_info.shape[1];
 
     double *ptr = (double *)seismogram_info.ptr;
     double *ptr1 = (double *)timeneiron_info.ptr;
