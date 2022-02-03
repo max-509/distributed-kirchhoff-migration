@@ -29,8 +29,10 @@ def main():
 
     my_m1 = data1.shape[0]/size
     my_matrix1 = data1[int(rank*my_m1):int((rank+1)*my_m1)] #узел с данными для обработки нейронкой
+    time = model.predict(my_matrix1) #предсказанные времена для узла с данными
 
     my_m2 = data2.shape[0]/size
     my_matrix2 = data2[int(rank*my_m2):int((rank+1)*my_m2)] #данные для Глеба
+
 if __name__ == '__main__':
     main()
