@@ -8,6 +8,5 @@
 using namespace std;
 int main() {
     int res;
-    res=t(1,3);
-    return res;
+        return res;
 }
