@@ -6,8 +6,8 @@
 namespace py = pybind11;
 
 // Фун-кия буффера и сохранения данных
-
-py::array_t<double> array_buffer(py::array_t<double> seismogram, py::array_t<double> timeneiron, float dt) {
+template < typename T,typename T1>
+py::array_t<double> calculate_migration(py::array_t<T> seismogram, py::array_t<T1> timeneiron, float dt) {
     py::buffer_info seismogram_info = seismogram.request();
     py::buffer_info timeneiron_info = timeneiron.request();
 
@@ -21,15 +21,16 @@ py::array_t<double> array_buffer(py::array_t<double> seismogram, py::array_t<dou
 
     // обработка массива timeneiro
 
-    auto result = py::array_t<double>(seismogram_info.size);
-    py::buffer_info result_info = result.request();
-    double *ptr2 = (double *)result_info.ptr;
+    auto sumAmp_node= py::array_t<double>(seismogram_info.size);
+    py::buffer_info sumAmp_node_info = sumAmp_node.request();
+    double *ptr2 = (double *)sumAmp_node_info.ptr;
 
-    do_result(ptr,ptr1,ptr2,n_traces, n_samples, n_node,dt);
-
-    return result;
+    py::gil_scoped_release release;
+    calculate_sumAmp_node(ptr,ptr1,ptr2,n_traces, n_samples, n_node,dt);
+    py::gil_scoped_acquire acquire;
+    return sumAmp_node;
 }
 
 PYBIND11_MODULE(_migration, m) {
-    m.def("array_buffer", &array_buffer);
+    m.def("calculate_migration", &calculate_migration);
 }

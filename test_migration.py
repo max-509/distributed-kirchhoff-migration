@@ -31,7 +31,7 @@ for idx, sou in enumerate(sources_x):
         s += 1
 
 #(10, 1501)
-observed_time.reshape(1,20000)
+observed_time = observed_time.reshape(1,20000)
 dt=0.001
-res=_migration.array_buffer(seism,observed_time, dt)
-print('\n',res,'\n')
+res=_migration.migration(seism,observed_time, dt)
+print(res)
