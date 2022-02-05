@@ -79,10 +79,9 @@ def main():
         return arr.reshape(-1, la)
 
     if rank == 0:
-        data_trace = seism_trace
         sources_coords = data_set_source['SOUX'].values.reshape(-1)
         receivers_coords = data_set_receiver['RECX'].values.reshape(-1)
-        seismogramm = data_trace
+        seismogramm = seism_trace
     else:
         sources_coords = None
         receivers_coords = None
