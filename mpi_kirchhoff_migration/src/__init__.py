@@ -79,26 +79,28 @@ def main():
 
 if rank == 0:
     data_trace = seism_trace
-    data1_S = d_source
-    data1_R = d_receiver
-    data2 = data_trace
+    sources_coords = d_source
+    receivers_coords = d_receiver
+    seismogramm = data_trace
     else:
-        data1_S = None
-        data1_R = None
-        data2 = None
-    data1_S = comm.bcast(data1_S, root=0)
-    data1_R = comm.bcast(data1_R, root=0)
-    data2 = comm.bcast(data2, root=0)
+        sources_coords = None
+        receivers_coords = None
+        seismogramm = None
+    sources_coords = comm.bcast(sources_coords, root=0)
+    receivers_coords= comm.bcast(receivers_coords, root=0)
+    seismogramm = comm.bcast(data2, root=0)
 
-    my_m1 = data1_S.shape[0]/size
-    my_matrix1 = data1_S[int(rank*my_m1):int((rank+1)*my_m1)]
-    my_m2 = data1_R.shape[0]/size
-    my_matrix2 = data1_R[int(rank*my_m2):int((rank+1)*my_m2)]
-    my_m3 = data2.shape[0]/size
-    my_matrix3 = data2[int(rank*my_m3):int((rank+1)*my_m3)]
+    my_m1 = sources_coords.shape[0]/size
+    my_matrix1 = sources_coords[int(rank*my_m1):int((rank+1)*my_m1)]
+    my_m2 = receivers_coords.shape[0]/size
+    my_matrix2 = receivers_coords[int(rank*my_m2):int((rank+1)*my_m2)]
+    my_m3 = seismogramm.shape[0]/size
+    my_matrix3 = seismogramm[int(rank*my_m3):int((rank+1)*my_m3)]
     time1 = loaded.predict(itog_source_point)
     time2 = loaded.predict(itog_point_receiver)
-    time = time1 +time2
-    print(str(time1), str(time2), time1.shape, time2.shape)
+    @numba.njit(parallel=True)
+    def travel_times_sum(t1, t2): return t1+ t2
+    travel_times_sum(time1, time2)
+    print(travel_times_sum)
 if __name__ == '__main__':
     main()
