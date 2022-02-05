@@ -32,6 +32,10 @@ def main():
     dx = (x1-x0)/(nx-1)
     dz = (z1-z0)/(nz-1)
 
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
     UP = 0
     DOWN = 1
     LEFT = 2
@@ -77,11 +81,11 @@ def main():
     d_source = cartesian_product(data_set_source['SOUX'].values.reshape(-1), masz, masx)
     d_receiver = cartesian_product(data_set_receiver['RECX'].values.reshape(-1), masz, masx)
 
-if rank == 0:
-    data_trace = seism_trace
-    sources_coords = d_source
-    receivers_coords = d_receiver
-    seismogramm = data_trace
+    if rank == 0:
+        data_trace = seism_trace
+        sources_coords = d_source
+        receivers_coords = d_receiver
+        seismogramm = data_trace
     else:
         sources_coords = None
         receivers_coords = None
