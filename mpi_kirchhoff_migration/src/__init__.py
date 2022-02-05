@@ -78,13 +78,10 @@ def main():
             arr[...,i] = a
         return arr.reshape(-1, la)
 
-    d_source = cartesian_product(data_set_source['SOUX'].values.reshape(-1), masz, masx)
-    d_receiver = cartesian_product(data_set_receiver['RECX'].values.reshape(-1), masz, masx)
-
     if rank == 0:
         data_trace = seism_trace
-        sources_coords = d_source
-        receivers_coords = d_receiver
+        sources_coords = data_set_source['SOUX'].values.reshape(-1)
+        receivers_coords = data_set_receiver['RECX'].values.reshape(-1)
         seismogramm = data_trace
     else:
         sources_coords = None
@@ -94,10 +91,12 @@ def main():
     receivers_coords= comm.bcast(receivers_coords, root=0)
     seismogramm = comm.bcast(data2, root=0)
 
-    my_m1 = sources_coords.shape[0]/size
-    my_matrix1 = sources_coords[int(rank*my_m1):int((rank+1)*my_m1)]
-    my_m2 = receivers_coords.shape[0]/size
-    my_matrix2 = receivers_coords[int(rank*my_m2):int((rank+1)*my_m2)]
+    d_source = cartesian_product(sources_coords, masz, masx)
+    d_receiver = cartesian_product(receivers_coords, masz, masx)
+    my_m1 = d_source.shape[0]/size
+    my_matrix1 = d_source[int(rank*my_m1):int((rank+1)*my_m1)]
+    my_m2 = d_receiver.shape[0]/size
+    my_matrix2 = d_receiver[int(rank*my_m2):int((rank+1)*my_m2)]
     my_m3 = seismogramm.shape[0]/size
     my_matrix3 = seismogramm[int(rank*my_m3):int((rank+1)*my_m3)]
     time1 = loaded.predict(itog_source_point)
