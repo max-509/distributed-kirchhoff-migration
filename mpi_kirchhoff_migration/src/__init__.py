@@ -4,50 +4,51 @@ from mpi4py import MPI
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import configparser
 
 def main():
 
-
-
     def createConfig(path):
-        config=configparser.ConfigParser()
-        config.add_section("Settings")
-        config.set("Settings", "Координата начальной точки по X", input('Координата начальной точки по X:'))
-        config.set("Settings", "Координата конечной точки по X", input('Координата конечной точки по X:'))
-        config.set("Settings", "Координата начальной точки по Z", input('Координата начальной точки по Z:'))
-        config.set("Settings", "Координата конечной точки по Z", input('Координата конечной точки по Z:'))
-        config.set("Settings", "Количество точек среды по оси X", input('Количество точек среды по оси X:'))
-        config.set("Settings", "Количество точек среды по оси Z", input('Количество точек среды по оси Z:'))
-        with open(path, "w") as config_file:
-            config.write(config_file)
+    config=configparser.ConfigParser()
+    config.add_section("Settings")
+    config.add_section("Directories")
+    config.set("Settings", "Координата начальной точки по X", input('Координата начальной точки по X:'))
+    config.set("Settings", "Координата конечной точки по X", input('Координата конечной точки по X:'))
+    config.set("Settings", "Координата начальной точки по Z", input('Координата начальной точки по Z:'))
+    config.set("Settings", "Координата конечной точки по Z", input('Координата конечной точки по Z:'))
+    config.set("Settings", "Количество точек среды по оси X", input('Количество точек среды по оси X:'))
+    config.set("Settings", "Количество точек среды по оси Z", input('Количество точек среды по оси Z:'))
+    config.set("Directories", "Данные о параметрах источника и приемника", "C:\Users\Руслан\Desktop\syst_obs.csv")
+    config.set("Directories", "Сейсмограмма", "")
+    with open(path, "w") as config_file:
+        config.write(config_file)
 
-    def get_config(path):
+    path = "settings.ini"
+    createConfig(path)
 
-        if not os.path.exists(path):
-            create_config(path)
+    config=configparser.ConfigParser()
+    config.read('settings.ini')
+    directories = config['Directories']
 
-        config = configparser.ConfigParser()
-        config.read(path)
-        return config
+    path_nn = "/content/gdrive/MyDrive/Colab Notebooks/EiconalNN.pb"
+    loaded = tf.keras.models.load_model(path_nn)
 
-    def get_setting(path, section, setting):
-        config = get_config(path)
-        value = config.get(section, setting)
-        msg = "{section} {setting} is {value}".format(section=section, setting=setting, value=value)
-        print(msg)
-        return value
+    data_set = pd.read_csv(directories['Данные о параметрах источника и приемника'])
+    seism_trace = np.load(directories['Сейсмограмма'])
 
-    if __name__ == "__main__":
-        path = "settings.ini"
-        createConfig(path)
-        font = get_setting(path, 'Settings', 'Координата конечной точки по Z')
+    data_set_source = data_set.drop(['FFID', 'RECZ', 'RECX', 'SOUZ', 'CDPX_bin'], axis=1)
+    data_set_receiver = data_set.drop(['FFID', 'SOUX', 'SOUZ', 'RECZ', 'CDPX_bin'], axis=1)
 
-    path = "/content/gdrive/MyDrive/Colab Notebooks/EiconalNN.pb"
-    loaded = tf.keras.models.load_model(path)
+    parametres = config['Settings']
 
-    data_set = pd.read_csv('/content/gdrive/MyDrive/Colab Notebooks/syst_obs_csv.gz')
-    seism_trace = np.load('/content/gdrive/MyDrive/Colab Notebooks/seism.npy')
-
+    nx = parametres["Количество точек среды по оси X"]
+    nz = parametres["Количество точек среды по оси Z"]
+    x0 = parametres['Координата начальной точки по X']
+    x1 = parametres["Координата конечной точки по X"]
+    z0 = parametres["Координата начальной точки по Z"]
+    z1 = parametres["Координата конечной точки по Z"]
+    dx = (x1-x0)/(nx-1)
+    dz = (z1-z0)/(nz-1)
     data_set_source = data_set.drop(['FFID', 'RECZ', 'RECX', 'SOUZ', 'CDPX_bin'], axis=1)
     data_set_receiver = data_set.drop(['FFID', 'SOUX', 'SOUZ', 'RECZ', 'CDPX_bin'], axis=1)
 
@@ -70,12 +71,9 @@ def main():
     my_mpi_row, my_mpi_col = cartesian_communicator.Get_coords(cartesian_communicator.rank)
     neighbour_processes[UP], neighbour_processes[DOWN] = cartesian_communicator.Shift(0, 1)
     neighbour_processes[LEFT], neighbour_processes[RIGHT]  = cartesian_communicator.Shift(1, 1)
-    #print ("Process = %s row = %s\n column = %s ----> neighbour_processes[UP] = %s neighbour_processes[DOWN] = %s neighbour_processes[LEFT] =%s neighbour_processes[RIGHT]=%s" %(rank, my_mpi_row, my_mpi_col,neighbour_processes[UP],neighbour_processes[DOWN], neighbour_processes[LEFT] , neighbour_processes[RIGHT]))
 
     x_coor = dx*(nx-1)/grid_rows
     z_coor = dz*(nz-1)/grid_column
-
-    #print(x_coor, z_coor)
 
     n = nx//grid_rows
     m = nz//grid_column
@@ -88,7 +86,6 @@ def main():
     masx= np.linspace(my_mpi_row*x_coor, (my_mpi_row+1)*x_coor, n)
     masz = np.linspace(my_mpi_col*z_coor, (my_mpi_col+1)*z_coor, m)
 
-
     def cartesian_product(*arrays):
         la = len(arrays)
         dtype = np.result_type(*arrays)
@@ -98,7 +95,6 @@ def main():
         return arr.reshape(-1, la)
 
     data = cartesian_product(masx, masz)
-    #print(data)
 
     df = pd.DataFrame(data, columns = ["RECX", 'RECZ'])
     df = df[:20000]
@@ -109,19 +105,14 @@ def main():
 
     itog_source_point=pd.DataFrame([SOUX,POINTZ,POINTX]).T
     itog_source_point.columns=['SOUX','POINTZ','POINTX']
-    #print(itog_source_point)
 
     RECX=np.array(data_set_receiver['RECX'])
 
     itog_point_receiver=pd.DataFrame([RECX,POINTZ,POINTX]).T
     itog_point_receiver.columns=['RECX','POINTZ','POINTX']
-    #print(itog_point_receiver)
+
     if rank == 0:
         data_trace = seism_trace
-        itog_point_receiver=pd.DataFrame([RECX,POINTZ,POINTX]).T
-        itog_point_receiver.columns=['RECX','POINTZ','POINTX']
-        itog_source_point=pd.DataFrame([SOUX,POINTZ,POINTX]).T
-        itog_source_point.columns=['SOUX','POINTZ','POINTX']
         data1_S = itog_point_receiver
         data1_R = itog_source_point
         data2 = data_trace
@@ -141,7 +132,6 @@ def main():
     my_matrix3 = data2[int(rank*my_m3):int((rank+1)*my_m3)]
     time1 = loaded.predict(itog_source_point)
     time2 = loaded.predict(itog_point_receiver)
-    print(str(time1), str(time2))
 
 if __name__ == '__main__':
     main()
