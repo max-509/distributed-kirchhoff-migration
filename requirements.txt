@@ -1,3 +1,7 @@
 numpy
+mpi4py
 setuptools
 pybind11
+tensorflow
+configparser
+numba
