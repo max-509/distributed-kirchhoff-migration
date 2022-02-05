@@ -8,49 +8,29 @@ import configparser
 
 def main():
 
-    def createConfig(path):
-    config=configparser.ConfigParser()
-    config.add_section("Settings")
-    config.add_section("Directories")
-    config.set("Settings", "Координата начальной точки по X", input('Координата начальной точки по X:'))
-    config.set("Settings", "Координата конечной точки по X", input('Координата конечной точки по X:'))
-    config.set("Settings", "Координата начальной точки по Z", input('Координата начальной точки по Z:'))
-    config.set("Settings", "Координата конечной точки по Z", input('Координата конечной точки по Z:'))
-    config.set("Settings", "Количество точек среды по оси X", input('Количество точек среды по оси X:'))
-    config.set("Settings", "Количество точек среды по оси Z", input('Количество точек среды по оси Z:'))
-    config.set("Directories", "Данные о параметрах источника и приемника", "C:\Users\Руслан\Desktop\syst_obs.csv")
-    config.set("Directories", "Сейсмограмма", "")
-    with open(path, "w") as config_file:
-        config.write(config_file)
-
-    path = "settings.ini"
-    createConfig(path)
-
     config=configparser.ConfigParser()
     config.read('settings.ini')
     directories = config['Directories']
+    directories['data_source-receiver']
 
-    path_nn = "/content/gdrive/MyDrive/Colab Notebooks/EiconalNN.pb"
-    loaded = tf.keras.models.load_model(path_nn)
+    loaded = tf.keras.models.load_model(directories['neural_network'])
 
-    data_set = pd.read_csv(directories['Данные о параметрах источника и приемника'])
-    seism_trace = np.load(directories['Сейсмограмма'])
+    data_set = pd.read_csv(directories['data_source-receiver'])
+    seism_trace = np.load(directories['seismogramma'])
 
     data_set_source = data_set.drop(['FFID', 'RECZ', 'RECX', 'SOUZ', 'CDPX_bin'], axis=1)
     data_set_receiver = data_set.drop(['FFID', 'SOUX', 'SOUZ', 'RECZ', 'CDPX_bin'], axis=1)
 
     parametres = config['Settings']
 
-    nx = parametres["Количество точек среды по оси X"]
-    nz = parametres["Количество точек среды по оси Z"]
-    x0 = parametres['Координата начальной точки по X']
-    x1 = parametres["Координата конечной точки по X"]
-    z0 = parametres["Координата начальной точки по Z"]
-    z1 = parametres["Координата конечной точки по Z"]
+    nx = int(parametres["number_of_x_points"])
+    nz = int(parametres["number_of_z_points"])
+    x0 = int(parametres['starting_z_coord'])
+    x1 = int(parametres["ending_z_coord"])
+    z0 = int(parametres["starting_z_coord"])
+    z1 = int(parametres["ending_z_coord"])
     dx = (x1-x0)/(nx-1)
     dz = (z1-z0)/(nz-1)
-    data_set_source = data_set.drop(['FFID', 'RECZ', 'RECX', 'SOUZ', 'CDPX_bin'], axis=1)
-    data_set_receiver = data_set.drop(['FFID', 'SOUX', 'SOUZ', 'RECZ', 'CDPX_bin'], axis=1)
 
     UP = 0
     DOWN = 1
@@ -94,28 +74,14 @@ def main():
             arr[...,i] = a
         return arr.reshape(-1, la)
 
-    data = cartesian_product(masx, masz)
+    d_source = cartesian_product(data_set_source['SOUX'].values.reshape(-1), masz, masx)
+    d_receiver = cartesian_product(data_set_receiver['RECX'].values.reshape(-1), masz, masx)
 
-    df = pd.DataFrame(data, columns = ["RECX", 'RECZ'])
-    df = df[:20000]
-
-    SOUX=np.array(data_set_source['SOUX'])
-    POINTX=np.array(df['RECX'])
-    POINTZ=np.array(df['RECZ'])
-
-    itog_source_point=pd.DataFrame([SOUX,POINTZ,POINTX]).T
-    itog_source_point.columns=['SOUX','POINTZ','POINTX']
-
-    RECX=np.array(data_set_receiver['RECX'])
-
-    itog_point_receiver=pd.DataFrame([RECX,POINTZ,POINTX]).T
-    itog_point_receiver.columns=['RECX','POINTZ','POINTX']
-
-    if rank == 0:
-        data_trace = seism_trace
-        data1_S = itog_point_receiver
-        data1_R = itog_source_point
-        data2 = data_trace
+if rank == 0:
+    data_trace = seism_trace
+    data1_S = d_source
+    data1_R = d_receiver
+    data2 = data_trace
     else:
         data1_S = None
         data1_R = None
@@ -132,6 +98,7 @@ def main():
     my_matrix3 = data2[int(rank*my_m3):int((rank+1)*my_m3)]
     time1 = loaded.predict(itog_source_point)
     time2 = loaded.predict(itog_point_receiver)
-
+    time = time1 +time2
+    print(str(time1), str(time2), time1.shape, time2.shape)
 if __name__ == '__main__':
     main()
