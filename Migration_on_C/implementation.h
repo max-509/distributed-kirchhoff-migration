@@ -6,8 +6,8 @@
 #include <omp.h>
 #include <cstddef>
 template < typename T,typename T1>
-void calculate_sumAmp_node(T *ptr, T1 *ptr1, double *ptr2, int n_traces, int n_samples,
-                           int n_node, float dt,std::ptrdiff_t strides_seismogram_info_y,
+void calculate_sumAmp_node(T *ptr, T1 *ptr1, double *ptr2, std::ptrdiff_t n_traces, std::ptrdiff_t n_samples,
+                           std::ptrdiff_t n_node, float dt,std::ptrdiff_t strides_seismogram_info_y,
                            std::ptrdiff_t strides_seismogram_info_x,std::ptrdiff_t strides_timeneiron_info_y,
                            std::ptrdiff_t strides_timeneiron_info_x)
                            {

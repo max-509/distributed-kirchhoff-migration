@@ -33,5 +33,5 @@ for idx, sou in enumerate(sources_x):
 #(10, 1501)
 observed_time = observed_time.reshape(1,20000)
 dt=0.001
-res=_migration.calculate_migration(seism[::6, :],observed_time[:, ::6], dt)
+res=_migration.calculate_migration(seism,observed_time, dt)
 print(res.shape)
