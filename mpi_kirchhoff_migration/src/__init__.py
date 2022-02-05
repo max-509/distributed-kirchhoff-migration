@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import configparser
+import numba
 
 def main():
 
@@ -92,17 +93,10 @@ def main():
 
     d_source = cartesian_product(sources_coords, masz, masx)
     d_receiver = cartesian_product(receivers_coords, masz, masx)
-    my_m1 = d_source.shape[0]/size
-    my_matrix1 = d_source[int(rank*my_m1):int((rank+1)*my_m1)]
-    my_m2 = d_receiver.shape[0]/size
-    my_matrix2 = d_receiver[int(rank*my_m2):int((rank+1)*my_m2)]
-    my_m3 = seismogramm.shape[0]/size
-    my_matrix3 = seismogramm[int(rank*my_m3):int((rank+1)*my_m3)]
-    time1 = loaded.predict(itog_source_point)
-    time2 = loaded.predict(itog_point_receiver)
+    time1 = loaded.predict(d_source)
+    time2 = loaded.predict(d_receiver)
     @numba.njit(parallel=True)
     def travel_times_sum(t1, t2): return t1+ t2
-    travel_times_sum(time1, time2)
-    print(travel_times_sum)
+    print(travel_times_sum(time1, time2))
 if __name__ == '__main__':
     main()

@@ -4,3 +4,4 @@ setuptools
 pybind11
 tensorflow
 configparser
+numba
