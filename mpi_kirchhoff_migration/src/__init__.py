@@ -7,7 +7,7 @@ import tensorflow as tf
 import configparser
 import numba
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 def main():
 
@@ -100,7 +100,7 @@ def main():
         return loaded.predict(input_coords)
 
     n_processes = mp.cpu_count()
-    with ProcessPoolExecutor(n_processes) as executor:
+    with ThreadPoolExecutor(n_processes) as executor:
         def split(d):
             n_sources_points_pairs = d.shape[0]
             part = n_sources_points_pairs // n_processes
