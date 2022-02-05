@@ -89,7 +89,7 @@ def main():
         seismogramm = None
     sources_coords = comm.bcast(sources_coords, root=0)
     receivers_coords= comm.bcast(receivers_coords, root=0)
-    seismogramm = comm.bcast(data_trace, root=0)
+    seismogramm = comm.bcast(seismogramm, root=0)
 
     d_source = cartesian_product(sources_coords, masz, masx)
     d_receiver = cartesian_product(receivers_coords, masz, masx)
