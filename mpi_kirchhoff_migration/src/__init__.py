@@ -6,6 +6,8 @@ import pandas as pd
 import tensorflow as tf
 import configparser
 import numba
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 
 def main():
 
@@ -93,10 +95,26 @@ def main():
 
     d_source = cartesian_product(sources_coords, masz, masx)
     d_receiver = cartesian_product(receivers_coords, masz, masx)
-    time1 = loaded.predict(d_source)
-    time2 = loaded.predict(d_receiver)
+
+    def times_calculator(input_coords):
+        return loaded.predict(input_coords)
+
+    n_processes = mp.cpu_count()
+    with ProcessPoolExecutor(n_processes) as executor:
+        def split(d):
+            n_sources_points_pairs = d.shape[0]
+            part = n_sources_points_pairs // n_processes
+            split_parts = []
+            for i in range(n_processes - 1):
+                split_parts.append((i + 1) * part)
+            split_parts.append(n_processes * part + (n_sources_points_pairs % n_processes))
+            source_travel_times_splits = np.concatenate(executor.map(times_calculator, np.split(d, split_parts)[:-1]))
+            return source_travel_times_splits
+        time1 = split(d_source)
+        time2 = split(d_receiver)
+
     @numba.njit(parallel=True)
-    def travel_times_sum(t1, t2): return t1+ t2
+    def travel_times_sum(t1, t2): return t1 + t2
     print(travel_times_sum(time1, time2))
 if __name__ == '__main__':
     main()
