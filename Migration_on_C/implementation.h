@@ -4,8 +4,8 @@
 #include <vector>
 #include <iostream>
 #include <omp.h>
-
-void calculate_sumAmp_node(double *ptr, double *ptr1, double *ptr2, int n_traces, int n_samples, int n_node, float dt) {
+template < typename T,typename T1>
+void calculate_sumAmp_node(T *ptr, T1 *ptr1, double *ptr2, int n_traces, int n_samples, int n_node, float dt) {
     // Время трассы от 0 до конечного значения через dt
 
     int len_nx_tn = n_traces; // Создаю длину строки для t нейронки
