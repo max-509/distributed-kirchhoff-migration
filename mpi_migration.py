@@ -40,8 +40,8 @@ def main():
     data_set = pd.read_csv(directories['data_source-receiver'])
     seism_trace = np.load(directories['seismogramma'])
     path_to_result = directories['path_to_result']
-    data_set_source = data_set.drop(['FFID', 'RECZ', 'RECX', 'SOUZ', 'CDPX_bin'], axis=1)
-    data_set_receiver = data_set.drop(['FFID', 'SOUX', 'SOUZ', 'RECZ', 'CDPX_bin'], axis=1)
+    data_set_source = data_set["SOUX"]
+    data_set_receiver = data_set["RECX"]
 
     parametres = config['Settings']
 
