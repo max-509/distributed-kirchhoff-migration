@@ -14,13 +14,15 @@ void calculate_sumAmp_node(T *ptr, T1 *ptr1, double *ptr2, std::ptrdiff_t n_trac
 
     #pragma omp parallel for
     for (int i = 0; i < n_node; i++) { // Первый элемент строки t нейронки
+        double res_tmp = 0.0;
         for (int j = 0; j < n_traces; j++) { // Оставшиеся элементы в строке
             int indx;
             indx = int(ptr1[strides_timeneiron_info_y* i + j*strides_timeneiron_info_x] / dt);
             if (indx < n_samples) {
-                ptr2[i] += ptr[j * strides_seismogram_info_y + indx*strides_seismogram_info_x];
+               res_tmp += ptr[j * strides_seismogram_info_y + indx*strides_seismogram_info_x];
             }
         }
+        ptr2[i] = res_tmp;
     }
 }
 

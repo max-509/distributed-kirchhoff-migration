@@ -10,8 +10,8 @@ namespace py = pybind11;
 
 template < typename T,typename T1>
 
-py::array_t<double> calculate_migration(py::array_t<T, py::array::c_style | py::array::forcecast> seismogram,
-                                        py::array_t<T1, py::array::c_style | py::array::forcecast> timeneiron, float dt)
+py::array_t<double> calculate_migration(py::array_t<T, py::array::c_style> seismogram,
+                                        py::array_t<T1, py::array::c_style> timeneiron, float dt)
 {   // создаём буфер
     py::buffer_info seismogram_info = seismogram.request();
     py::buffer_info timeneiron_info = timeneiron.request();
@@ -32,7 +32,7 @@ py::array_t<double> calculate_migration(py::array_t<T, py::array::c_style | py::
 
     if (n_traces!=n_point)
         throw std::runtime_error("Input mismatch.Shape: data_trace(n_traces,n_samples),data_time(n_node,n_samples)");
-    if (seismogram_info.ndim !=2 && timeneiron_info.ndim !=2)
+    if (seismogram_info.ndim !=2 || timeneiron_info.ndim !=2)
         throw std::runtime_error("Arrays don't match dimension two");
 
     //Создаём переменные для функции
@@ -40,7 +40,7 @@ py::array_t<double> calculate_migration(py::array_t<T, py::array::c_style | py::
     T *ptr = (T *)seismogram_info.ptr;
     T1 *ptr1 = (T1 *)timeneiron_info.ptr;
 
-    auto sumAmp_node= py::array_t<double>(seismogram_info.size);
+    auto sumAmp_node= py::array_t<double>(n_node);
     py::buffer_info sumAmp_node_info = sumAmp_node.request();
     double *ptr2 = (double *)sumAmp_node_info.ptr;
 
