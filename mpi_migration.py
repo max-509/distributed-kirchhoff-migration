@@ -9,6 +9,7 @@ import configparser
 import numba
 import multiprocessing as mp
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from _migration import calculate_migration
@@ -43,6 +44,8 @@ def main():
     data_set_source = data_set['SOUX']
     data_set_receiver = data_set['RECX']
 
+    os.makedirs(path_to_result, exist_ok=True)
+
     parametres = config['Settings']
 
     nx = int(parametres["number_of_x_points"])
@@ -58,15 +61,22 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
+    # tf.debugging.set_log_device_placement(True)
+
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         # Restrict TensorFlow to only use the first GPU
         try:
-            tf.config.set_visible_devices(gpus[rank], 'GPU')
+            tf.config.experimental.set_memory_growth(gpus[1], True)
+            tf.config.set_visible_devices(gpus[1], 'GPU')
+            # tf.config.experimental.set_virtual_device_configuration(
+            #     gpus[0],
+            #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2**14)])
             logical_gpus = tf.config.list_logical_devices('GPU')
             print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
         except RuntimeError as e:
             print(e)
+
 
     loaded = tf.keras.models.load_model(directories['neural_network'])
 
@@ -104,66 +114,52 @@ def main():
     masx = np.linspace(x_begin, x_end, x_points)
     masz = np.linspace(z_begin, z_end, z_points)
 
+    sources_coords = None
+    receivers_coords = None
+    seismogramm = None
     if rank == 0:
         sources_coords = data_set_source.values.reshape(-1)
         receivers_coords = data_set_receiver.values.reshape(-1)
         seismogramm = seism_trace
-    else:
-        sources_coords = None
-        receivers_coords = None
-        seismogramm = None
+
     sources_coords = comm.bcast(sources_coords, root=0)
     receivers_coords = comm.bcast(receivers_coords, root=0)
     seismogramm = comm.bcast(seismogramm, root=0)
 
     d_source = cartesian_product(sources_coords, masz, masx)
-    print(f'D_SOURCE_SHAPE: {d_source.shape}')
     d_receiver = cartesian_product(receivers_coords, masz, masx)
-    print(f'D_RECEIVER_SHAPE: {d_receiver.shape}')
 
     def times_calculator(input_coords):
-        return loaded.predict(input_coords, batch_size=(2 ** 15))
+        '''
+        block_size = 2**14
+        predicted = np.empty(input_coords.shape, dtype=input_coords.dtype)
+        for i in range(0, input_coords.shape[0], block_size):
+            predicted[i:i+block_size] = loaded.predict(input_coords[i:i+block_size],
+                                                       batch_size=512)
+        return predicted
+        '''
+        return loaded.predict(input_coords, batch_size=2**22)
 
-    n_processes = 1
-    with ThreadPoolExecutor(n_processes) as executor:
-        def split(d):
-            n_sources_points_pairs = d.shape[0]
-            part = n_sources_points_pairs // n_processes
-            split_parts = []
-            for i in range(n_processes - 1):
-                split_parts.append((i + 1) * part)
-            split_parts.append(n_processes * part + (n_sources_points_pairs % n_processes))
-            source_travel_times_splits = np.concatenate(list(executor.map(times_calculator, np.split(d, split_parts)[:-1])))
-            return source_travel_times_splits
+    start_t = time.time()
+    time1 = times_calculator(d_source)
+    time2 = times_calculator(d_receiver)
 
-        # time1 = split(d_source)
-        # time2 = split(d_receiver)
-        time1 = times_calculator(d_source)
-        time2 = times_calculator(d_receiver)
+    travel_times = np.ascontiguousarray(travel_times_sum(time1, time2)
+                                        .reshape(-1, len(masz) * len(masx)).T)
 
-    travel_times = travel_times_sum(time1, time2).reshape(-1, len(masz) * len(masx)).T
+    end_t = time.time()
 
+    print(f'TRAVEL TIMES TIME: {end_t - start_t}')
+
+    start_t = time.time()
     result = calculate_migration(seismogramm, travel_times, dt).reshape(m, n)
+    end_t = time.time()
+
+    print(f'MIGRATION TIME: {end_t - start_t}')
 
     np.save(os.path.join(path_to_result, f'result{my_mpi_row}{my_mpi_col}'), result)
 
 
 if __name__ == '__main__':
-    gpus = tf.config.list_physical_devices('GPU')
-    '''
-    if gpus:
-        # Restrict TensorFlow to only use the first GPU
-        try:
-            tf.config.set_visible_devices(gpus[1], 'GPU')
-            logical_gpus = tf.config.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
-        except RuntimeError as e:
-        # Visible devices must be set before GPUs have been initialized
-            print(e)
-    '''
-    # tf.debugging.set_log_device_placement(True)
-    # physical_devices = tf.config.list_physical_devices('GPU')
-    # for device in physical_devices:
-    #     tf.config.experimental.set_memory_growth(device, True)
-    # with tf.device('/job:localhost/replica:0/task:0/device:GPU:1'):
     main()
+
